@@ -170,39 +170,46 @@ class RAGPipeline:
         - Date-based directory structure (data/logs/backend/2026/02/06/)
         - Rotating file handler (max 10MB, 5 backups)
         - Detailed formatting with timestamps and log levels
+        - Gracefully handles read-only filesystems (Vercel, AWS Lambda)
         
         Returns:
             Configured logger instance
         """
         logger = logging.getLogger(__name__)
         
-        # Create logs directory with yyyy/mm/dd structure
-        now = datetime.now()
-        log_dir = settings.project_root / "data" / "logs" / "backend" / now.strftime("%Y") / now.strftime("%m") / now.strftime("%d")
-        log_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Create log file with timestamp
-        timestamp = now.strftime("%H%M%S")
-        log_file = log_dir / f"rag_pipeline_{timestamp}.log"
-        
-        # Create rotating file handler (max 10MB, keep 5 backup files)
-        file_handler = RotatingFileHandler(
-            log_file,
-            maxBytes=10 * 1024 * 1024,  # 10MB
-            backupCount=5,
-            encoding='utf-8'
-        )
-        file_handler.setLevel(logging.DEBUG)
-        
         # Create formatter with detailed information
         formatter = logging.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S'
         )
-        file_handler.setFormatter(formatter)
         
-        # Add handler to logger
-        logger.addHandler(file_handler)
+        # Try to create file handler (will fail on read-only filesystems)
+        try:
+            # Create logs directory with yyyy/mm/dd structure
+            now = datetime.now()
+            log_dir = settings.project_root / "data" / "logs" / "backend" / now.strftime("%Y") / now.strftime("%m") / now.strftime("%d")
+            log_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Create log file with timestamp
+            timestamp = now.strftime("%H%M%S")
+            log_file = log_dir / f"rag_pipeline_{timestamp}.log"
+            
+            # Create rotating file handler (max 10MB, keep 5 backup files)
+            file_handler = RotatingFileHandler(
+                log_file,
+                maxBytes=10 * 1024 * 1024,  # 10MB
+                backupCount=5,
+                encoding='utf-8'
+            )
+            file_handler.setLevel(logging.DEBUG)
+            file_handler.setFormatter(formatter)
+            
+            # Add handler to logger
+            logger.addHandler(file_handler)
+        except (OSError, IOError) as e:
+            # Gracefully handle read-only filesystem (e.g., Vercel, AWS Lambda)
+            logger.warning(f"Could not set up file logging (read-only filesystem): {e}")
+            logger.warning("Falling back to console-only logging")
         
         # Also log to console
         console_handler = logging.StreamHandler()
@@ -215,8 +222,6 @@ class RAGPipeline:
         logger.addHandler(console_handler)
         
         logger.setLevel(logging.DEBUG)
-        logger.info(f"RAG pipeline logger initialized. Log file: {log_file}")
-        
         return logger
     
     # =========================================================================
