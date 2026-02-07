@@ -163,11 +163,14 @@ class EmbeddingService:
 # File Processing Functions
 # =============================================================================
 def ensure_directories():
-    """Create required directories if they don't exist."""
+    """Create required directories if they don't exist. Gracefully handles read-only filesystems."""
     paths = get_paths()
     for name, path in paths.items():
-        path.mkdir(parents=True, exist_ok=True)
-        logger.info(f"Ensured directory exists: {path}")
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Ensured directory exists: {path}")
+        except (OSError, IOError) as e:
+            logger.warning(f"Could not create directory {path} (read-only filesystem): {e}")
 
 
 def get_pending_files() -> List[Path]:
@@ -201,11 +204,14 @@ def load_document_chunks(file_path: Path) -> List[Dict[str, Any]]:
 
 
 def save_embeddings(documents: List[Dict[str, Any]], output_path: Path):
-    """Save documents with embeddings to JSON file."""
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, 'w', encoding='utf-8') as f:
-        json.dump(documents, f, indent=2, ensure_ascii=False)
-    logger.info(f"Saved {len(documents)} documents to: {output_path}")
+    """Save documents with embeddings to JSON file. Gracefully handles read-only filesystems."""
+    try:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(documents, f, indent=2, ensure_ascii=False)
+        logger.info(f"Saved {len(documents)} documents to: {output_path}")
+    except (OSError, IOError) as e:
+        logger.warning(f"Could not save embeddings to {output_path} (read-only filesystem): {e}")
 
 
 def process_document_file(file_path: Path, service: EmbeddingService) -> Tuple[int, Path]:

@@ -25,8 +25,11 @@ async def upload_document(
 
     # Save file
     upload_dir = Path(settings.raw_documents_path_absolute)
-    if not upload_dir.exists():
-        upload_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        if not upload_dir.exists():
+            upload_dir.mkdir(parents=True, exist_ok=True)
+    except (OSError, IOError) as e:
+        raise HTTPException(status_code=500, detail=f"Could not create upload directory (read-only filesystem): {e}")
         
     file_path = upload_dir / file.filename
     

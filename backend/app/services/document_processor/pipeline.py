@@ -226,7 +226,10 @@ class DocumentProcessingPipeline:
         """
         # ----- CREATE RESULTS DIRECTORY -----
         results_dir = Path(settings.processed_documents_path_absolute) / "results"
-        results_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            results_dir.mkdir(parents=True, exist_ok=True)
+        except (OSError, IOError) as e:
+            logger.warning(f"Could not create results directory {results_dir} (read-only filesystem): {e}")
 
         # ----- CREATE JSON FILENAME -----
         # Convert "report.pdf" to "report.json"
@@ -433,11 +436,17 @@ class DocumentProcessingPipeline:
         # ----- DETERMINE OUTPUT PATH -----
         if output_file is None:
             output_dir = Path(settings.processed_documents_path_absolute)
-            output_dir.mkdir(parents=True, exist_ok=True)
+            try:
+                output_dir.mkdir(parents=True, exist_ok=True)
+            except (OSError, IOError) as e:
+                logger.warning(f"Could not create output directory {output_dir} (read-only filesystem): {e}")
             output_file = output_dir / "processed_documents.json"
         else:
             output_file = Path(output_file)
-            output_file.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                output_file.parent.mkdir(parents=True, exist_ok=True)
+            except (OSError, IOError) as e:
+                logger.warning(f"Could not create output directory {output_file.parent} (read-only filesystem): {e}")
 
         # ----- CONVERT DOCUMENTS TO SERIALIZABLE FORMAT -----
         docs_data = []
