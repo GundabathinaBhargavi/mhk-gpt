@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     # =============================================================================
     QDRANT_HOST: str = Field(default="localhost", description="Qdrant host")
     QDRANT_PORT: int = Field(default=6333, description="Qdrant port")
+    QDRANT_API_KEY: str = Field(default="", description="Qdrant API key (for cloud instances)")
     QDRANT_COLLECTION_NAME: str = Field(default="company_docs", description="Qdrant collection name")
     QDRANT_VECTOR_SIZE: int = Field(default=1536, description="Vector dimension size (1536 for text-embedding-3-small)")
     
@@ -112,7 +113,7 @@ class Settings(BaseSettings):
     # Security
     # =============================================================================
     SECRET_KEY: str = Field(default="change-me-in-production", description="Secret key for security")
-    CORS_ORIGINS: str = Field(default="http://localhost:3000,http://localhost:8000", description="CORS origins")
+    CORS_ORIGINS: str = Field(default="http://localhost:3000,http://localhost:8000,https://*.vercel.app", description="CORS origins")
     ALLOWED_HOSTS: str = Field(default="*", description="Allowed hosts")
     
     RATE_LIMIT_ENABLED: bool = Field(default=True, description="Enable rate limiting")
@@ -201,7 +202,9 @@ class Settings(BaseSettings):
     @property
     def qdrant_url(self) -> str:
         """Get Qdrant connection URL."""
-        return f"http://{self.QDRANT_HOST}:{self.QDRANT_PORT}"
+        # Use HTTPS for cloud instances, HTTP for localhost
+        protocol = "https" if self.QDRANT_HOST != "localhost" else "http"
+        return f"{protocol}://{self.QDRANT_HOST}:{self.QDRANT_PORT}"
     
     class Config:
         """Pydantic config."""

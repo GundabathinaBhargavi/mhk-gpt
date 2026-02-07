@@ -1,0 +1,20 @@
+# Ignore virtual environments and local config
+.venv
+venv/
+backend/.venv
+
+# Ignore environment files (we will set env vars in Vercel settings)
+.env
+.env.*
+*.env
+
+# Large data directories not needed at runtime
+data/
+data/**
+
+# Editor and OS files
+.DS_Store
+.vscode/
+
+# Node modules (if any)
+node_modules/

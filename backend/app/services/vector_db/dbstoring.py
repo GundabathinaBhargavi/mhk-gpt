@@ -22,6 +22,7 @@ class QdrantClient:
         self,
         host: Optional[str] = None,
         port: Optional[int] = None,
+        api_key: Optional[str] = None,
         collection_name: Optional[str] = None
     ):
         """
@@ -30,16 +31,26 @@ class QdrantClient:
         Args:
             host: Qdrant host (default from settings)
             port: Qdrant port (default from settings)
+            api_key: Qdrant API key for cloud instances (default from settings)
             collection_name: Collection name (default from settings)
         """
         self.host = host or settings.QDRANT_HOST
         self.port = port or settings.QDRANT_PORT
+        self.api_key = api_key or settings.QDRANT_API_KEY
         self.collection_name = collection_name or settings.QDRANT_COLLECTION_NAME
         self.vector_size = settings.QDRANT_VECTOR_SIZE
         
         try:
-            self.client = QdrantClientSDK(host=self.host, port=self.port)
-            logger.info(f"Connected to Qdrant at {self.host}:{self.port}")
+            # Use URL for cloud instances, host:port for local
+            if self.host != "localhost" and self.api_key:
+                # Cloud instance with HTTPS
+                url = f"https://{self.host}:{self.port}"
+                self.client = QdrantClientSDK(url=url, api_key=self.api_key)
+                logger.info(f"Connected to Qdrant Cloud at {self.host}")
+            else:
+                # Local instance
+                self.client = QdrantClientSDK(host=self.host, port=self.port)
+                logger.info(f"Connected to Qdrant at {self.host}:{self.port}")
         except Exception as e:
             raise VectorDBError(f"Failed to connect to Qdrant: {str(e)}")
     
