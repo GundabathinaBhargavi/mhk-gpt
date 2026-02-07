@@ -16,8 +16,6 @@ import logging
 from typing import List, Tuple
 
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
-
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
 
@@ -301,7 +299,11 @@ class Chunker:
         Returns:
             np.ndarray: Similarity matrix where [i][j] is similarity between i and j.
         """
-        return cosine_similarity(embeddings)
+        # Normalize embeddings
+        norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+        normalized = embeddings / (norms + 1e-8)  # Add small epsilon to avoid division by zero
+        # Cosine similarity is dot product of normalized vectors
+        return np.dot(normalized, normalized.T)
 
     # -------------------------------------------------------------------------
     # SEMANTIC CHUNKING

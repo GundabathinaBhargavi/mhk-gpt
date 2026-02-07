@@ -16,8 +16,6 @@ from dataclasses import dataclass
 from collections import defaultdict
 
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
-
 from app.core.config import settings
 from app.core.exceptions import EmbeddingError, VectorDBError
 from app.services.rag.embeddings import get_embedding_service
