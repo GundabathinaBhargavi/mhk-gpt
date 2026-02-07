@@ -14,15 +14,8 @@ def setup_logging():
     """
     Configure application logging with both file and console handlers.
     Uses settings from config for log level, file path, and rotation.
+    Gracefully handles read-only filesystems (e.g., Vercel serverless).
     """
-    # Create logs directory if it doesn't exist
-    log_file_path = Path(settings.LOG_FILE)
-    log_file_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    # Parse rotation size (e.g., "10 MB" -> 10 * 1024 * 1024)
-    rotation_parts = settings.LOG_ROTATION.split()
-    rotation_bytes = int(rotation_parts[0]) * 1024 * 1024  # Assume MB
-    
     # Create formatters
     file_formatter = logging.Formatter(
         fmt="%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s",
@@ -33,25 +26,38 @@ def setup_logging():
         fmt="%(levelname)s:\t%(name)s - %(message)s"
     )
     
-    # File handler with rotation
-    file_handler = RotatingFileHandler(
-        filename=str(log_file_path),
-        maxBytes=rotation_bytes,
-        backupCount=5,
-        encoding="utf-8"
-    )
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(file_formatter)
-    
-    # Console handler
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(logging.INFO if settings.is_production else logging.DEBUG)
-    console_handler.setFormatter(console_formatter)
-    
     # Configure root logger
     root_logger = logging.getLogger()
     root_logger.setLevel(getattr(logging, settings.LOG_LEVEL))
-    root_logger.addHandler(file_handler)
+    
+    # Try to set up file handler (will fail on read-only filesystems like Vercel)
+    try:
+        log_file_path = Path(settings.LOG_FILE)
+        log_file_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Parse rotation size (e.g., "10 MB" -> 10 * 1024 * 1024)
+        rotation_parts = settings.LOG_ROTATION.split()
+        rotation_bytes = int(rotation_parts[0]) * 1024 * 1024  # Assume MB
+        
+        # File handler with rotation
+        file_handler = RotatingFileHandler(
+            filename=str(log_file_path),
+            maxBytes=rotation_bytes,
+            backupCount=5,
+            encoding="utf-8"
+        )
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(file_formatter)
+        root_logger.addHandler(file_handler)
+    except (OSError, IOError) as e:
+        # Gracefully handle read-only filesystem (e.g., Vercel, AWS Lambda)
+        print(f"Warning: Could not set up file logging (read-only filesystem): {e}")
+        print("Falling back to console-only logging")
+    
+    # Console handler (always available)
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.INFO if settings.is_production else logging.DEBUG)
+    console_handler.setFormatter(console_formatter)
     root_logger.addHandler(console_handler)
     
     # Reduce noise from third-party libraries
